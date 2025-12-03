@@ -2,16 +2,25 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
+// Helper para ler variáveis de ambiente (Vite ou Node)
+const getEnv = (key: string) => {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    return (import.meta as any).env[`VITE_${key}`] || '';
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key] || '';
+  }
+  return '';
+};
+
 // --- CONFIGURAÇÃO DO FIREBASE ---
-// Para ativar a sincronização na nuvem, crie um projeto no Firebase Console,
-// ative o Authentication e o Firestore, e cole as chaves abaixo.
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY || "", // Cole sua apiKey aqui
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN || "", // Cole seu authDomain aqui
-  projectId: process.env.FIREBASE_PROJECT_ID || "",
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "",
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "",
-  appId: process.env.FIREBASE_APP_ID || ""
+  apiKey: getEnv("FIREBASE_API_KEY"),
+  authDomain: getEnv("FIREBASE_AUTH_DOMAIN"),
+  projectId: getEnv("FIREBASE_PROJECT_ID"),
+  storageBucket: getEnv("FIREBASE_STORAGE_BUCKET"),
+  messagingSenderId: getEnv("FIREBASE_MESSAGING_SENDER_ID"),
+  appId: getEnv("FIREBASE_APP_ID")
 };
 
 // Verifica se a configuração existe antes de inicializar

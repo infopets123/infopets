@@ -1,12 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// NOTE: In a real production app, never expose keys on the client.
-// This is for demonstration purposes as requested by the prompt structure using process.env.API_KEY
-const apiKey = process.env.API_KEY || ''; 
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const checkApiKey = () => {
-  return !!apiKey;
+  return !!process.env.API_KEY;
 };
 
 export const sendMessageToAssistant = async (
@@ -14,16 +11,11 @@ export const sendMessageToAssistant = async (
   imageBase64?: string,
   history: { role: 'user' | 'model', text: string }[] = []
 ): Promise<string> => {
-  if (!apiKey) throw new Error("API Key não configurada");
+  if (!process.env.API_KEY) throw new Error("API Key não configurada");
 
-  const modelId = "gemini-2.5-flash"; // Good balance for chat
+  const modelId = "gemini-2.5-flash"; 
 
   try {
-    let responseText = "";
-    
-    // Convert history to format, but for simple single turn or small context we might just use generateContent for simplicity here
-    // However, for best chat experience, let's use a simplified generateContent approach with system instruction.
-    
     const parts: any[] = [];
     
     if (imageBase64) {
@@ -40,7 +32,6 @@ export const sendMessageToAssistant = async (
     const response = await ai.models.generateContent({
       model: modelId,
       contents: {
-        role: 'user',
         parts: parts
       },
       config: {
@@ -56,9 +47,8 @@ export const sendMessageToAssistant = async (
 };
 
 export const verifyReceipt = async (imageBase64: string): Promise<{ approved: boolean; details: string }> => {
-  if (!apiKey) throw new Error("API Key não configurada");
+  if (!process.env.API_KEY) throw new Error("API Key não configurada");
 
-  // Get current date formatted for Brazil (DD/MM/YYYY)
   const today = new Date();
   const dateString = today.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 
@@ -110,7 +100,6 @@ export const verifyReceipt = async (imageBase64: string): Promise<{ approved: bo
       }
     });
     
-    // Clean up Markdown formatting if present
     let jsonStr = response.text || "{}";
     jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
 
@@ -131,14 +120,14 @@ export interface FoodAnalysisResult {
   cups: string; 
   caloriesPerKg: number;
   proteinPct: number;
-  proteinGrams: number; // New Field
+  proteinGrams: number; 
   fiberPct: number;
   qualityNote: string;
   foodType: string;
 }
 
 export const analyzePetFood = async (weight: number, foodName: string): Promise<FoodAnalysisResult> => {
-  if (!apiKey) throw new Error("API Key não configurada");
+  if (!process.env.API_KEY) throw new Error("API Key não configurada");
 
   const prompt = `
     Atue como um nutricionista veterinário especialista.
@@ -190,8 +179,6 @@ export const analyzePetFood = async (weight: number, foodName: string): Promise<
 
     const data = JSON.parse(jsonStr);
     
-    // Calculate grams of protein based on percentage and portion
-    // Formula: Portion(g) * (Percentage / 100)
     const proteinGrams = Math.round(data.grams * (data.proteinPct / 100));
 
     return { ...data, proteinGrams } as FoodAnalysisResult;

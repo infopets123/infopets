@@ -13,8 +13,18 @@ interface Location {
 type SearchState = 'idle' | 'searching' | 'found' | 'error';
 type PermissionState = 'prompt' | 'granted' | 'denied';
 
-// NOTE: In a real app, ensure process.env.GOOGLE_MAPS_API_KEY is set in your build configuration.
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY || ""; 
+// Helper para ler variáveis de ambiente
+const getEnv = (key: string) => {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+    return (import.meta as any).env[`VITE_${key}`] || '';
+  }
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key] || '';
+  }
+  return '';
+};
+
+const GOOGLE_MAPS_API_KEY = getEnv('GOOGLE_MAPS_API_KEY');
 
 // Hardcoded Clinics in Goiânia for Demo/Fallback
 const GOIANIA_COORDS = { lat: -16.6869, lng: -49.2648 };
