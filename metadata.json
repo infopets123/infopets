@@ -1,0 +1,9 @@
+{
+  "name": "InfoPets",
+  "description": "A comprehensive pet management application featuring pet registration, vaccination tracking, veterinary clinic locator, food calculator, and an AI assistant powered by Gemini.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
