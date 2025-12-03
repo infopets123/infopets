@@ -1,11 +1,26 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  define: {
-    // Garante compatibilidade caso alguma lib tente acessar process.env
-    'process.env': {}
-  }
+export default defineConfig(({ mode }) => {
+  // Carrega variáveis de ambiente com base no modo atual (development/production)
+  // O terceiro parâmetro '' garante que carregue todas as vars, não só as com prefixo VITE_
+  const env = loadEnv(mode, (process as any).cwd(), '');
+
+  return {
+    plugins: [react()],
+    define: {
+      // Injeta as chaves de API diretamente no process.env para compatibilidade com o código
+      'process.env.API_KEY': JSON.stringify(env.API_KEY),
+      'process.env.FIREBASE_API_KEY': JSON.stringify(env.FIREBASE_API_KEY),
+      'process.env.FIREBASE_AUTH_DOMAIN': JSON.stringify(env.FIREBASE_AUTH_DOMAIN),
+      'process.env.FIREBASE_PROJECT_ID': JSON.stringify(env.FIREBASE_PROJECT_ID),
+      'process.env.FIREBASE_STORAGE_BUCKET': JSON.stringify(env.FIREBASE_STORAGE_BUCKET),
+      'process.env.FIREBASE_MESSAGING_SENDER_ID': JSON.stringify(env.FIREBASE_MESSAGING_SENDER_ID),
+      'process.env.FIREBASE_APP_ID': JSON.stringify(env.FIREBASE_APP_ID),
+      'process.env.GOOGLE_MAPS_API_KEY': JSON.stringify(env.GOOGLE_MAPS_API_KEY),
+      // Polyfill seguro para evitar crash em outras chamadas de process.env
+      'process.env': {}
+    }
+  };
 });
