@@ -1,9 +1,10 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const apiKey = process.env.API_KEY || "";
+const genAI = new GoogleGenerativeAI(apiKey);
 
 export const checkApiKey = () => {
-  return !!process.env.API_KEY;
+  return !!apiKey;
 };
 
 export const sendMessageToAssistant = async (
@@ -11,35 +12,31 @@ export const sendMessageToAssistant = async (
   imageBase64?: string,
   history: { role: 'user' | 'model', text: string }[] = []
 ): Promise<string> => {
-  if (!process.env.API_KEY) throw new Error("API Key não configurada");
-
-  const modelId = "gemini-2.5-flash"; 
+  if (!apiKey) throw new Error("API Key não configurada");
 
   try {
-    const parts: any[] = [];
-    
-    if (imageBase64) {
-      parts.push({
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: imageBase64
-        }
-      });
-    }
-    
-    parts.push({ text: message });
-
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: {
-        parts: parts
-      },
-      config: {
-        systemInstruction: "Você é um assistente veterinário virtual amigável e útil do app 'InfoPets'. Dê dicas sobre saúde, alimentação e cuidados. Se for uma emergência médica grave, sempre recomende procurar um veterinário presencial.",
-      }
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      systemInstruction: "Você é um assistente veterinário virtual amigável e útil do app 'InfoPets'. Dê dicas sobre saúde, alimentação e cuidados. Se for uma emergência médica grave, sempre recomende procurar um veterinário presencial."
     });
 
-    return response.text || "Desculpe, não consegui processar sua solicitação.";
+    let prompt: any[] = [message];
+    
+    if (imageBase64) {
+      prompt = [
+        message,
+        {
+          inlineData: {
+            data: imageBase64,
+            mimeType: "image/jpeg",
+          },
+        },
+      ];
+    }
+
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
     console.error("Gemini Error:", error);
     return "Ocorreu um erro ao conectar com a IA. Tente novamente mais tarde.";
@@ -47,7 +44,7 @@ export const sendMessageToAssistant = async (
 };
 
 export const verifyReceipt = async (imageBase64: string): Promise<{ approved: boolean; details: string }> => {
-  if (!process.env.API_KEY) throw new Error("API Key não configurada");
+  if (!apiKey) throw new Error("API Key não configurada");
 
   const today = new Date();
   const dateString = today.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
@@ -76,37 +73,42 @@ export const verifyReceipt = async (imageBase64: string): Promise<{ approved: bo
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: {
-        parts: [
-          { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
-          { text: prompt }
-        ]
-      },
-      config: {
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
-            encontrouNome: { type: Type.BOOLEAN },
-            encontrouValor: { type: Type.BOOLEAN },
-            encontrouData: { type: Type.BOOLEAN },
-            encontrouPix: { type: Type.BOOLEAN },
-            aprovado: { type: Type.BOOLEAN },
-            razao: { type: Type.STRING }
+            encontrouNome: { type: SchemaType.BOOLEAN },
+            encontrouValor: { type: SchemaType.BOOLEAN },
+            encontrouData: { type: SchemaType.BOOLEAN },
+            encontrouPix: { type: SchemaType.BOOLEAN },
+            aprovado: { type: SchemaType.BOOLEAN },
+            razao: { type: SchemaType.STRING }
           }
         }
       }
     });
-    
-    let jsonStr = response.text || "{}";
-    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
 
-    const result = JSON.parse(jsonStr);
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: imageBase64,
+          mimeType: "image/jpeg"
+        }
+      }
+    ]);
+
+    const response = await result.response;
+    const text = response.text();
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const data = JSON.parse(jsonStr);
+
     return {
-      approved: result.aprovado,
-      details: result.razao || (result.aprovado ? "Comprovante validado com sucesso!" : "Dados divergentes. Verifique se a data é de hoje.")
+      approved: data.aprovado,
+      details: data.razao || (data.aprovado ? "Comprovante validado com sucesso!" : "Dados divergentes. Verifique a data e o valor.")
     };
 
   } catch (error) {
@@ -127,7 +129,7 @@ export interface FoodAnalysisResult {
 }
 
 export const analyzePetFood = async (weight: number, foodName: string): Promise<FoodAnalysisResult> => {
-  if (!process.env.API_KEY) throw new Error("API Key não configurada");
+  if (!apiKey) throw new Error("API Key não configurada");
 
   const prompt = `
     Atue como um nutricionista veterinário especialista.
@@ -154,29 +156,30 @@ export const analyzePetFood = async (weight: number, foodName: string): Promise<
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: SchemaType.OBJECT,
           properties: {
-            grams: { type: Type.NUMBER },
-            cups: { type: Type.STRING },
-            caloriesPerKg: { type: Type.NUMBER },
-            proteinPct: { type: Type.NUMBER },
-            fiberPct: { type: Type.NUMBER },
-            qualityNote: { type: Type.STRING },
-            foodType: { type: Type.STRING }
+            grams: { type: SchemaType.NUMBER },
+            cups: { type: SchemaType.STRING },
+            caloriesPerKg: { type: SchemaType.NUMBER },
+            proteinPct: { type: SchemaType.NUMBER },
+            fiberPct: { type: SchemaType.NUMBER },
+            qualityNote: { type: SchemaType.STRING },
+            foodType: { type: SchemaType.STRING }
           }
         }
       }
     });
-    
-    let jsonStr = response.text || "{}";
-    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
 
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
     const data = JSON.parse(jsonStr);
     
     const proteinGrams = Math.round(data.grams * (data.proteinPct / 100));
