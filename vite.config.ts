@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Carrega variáveis de ambiente com base no modo atual (development/production)
-  // O terceiro parâmetro '' garante que carregue todas as vars, não só as com prefixo VITE_
+  // Carrega variáveis de ambiente com base no modo atual
   const env = loadEnv(mode, (process as any).cwd(), '');
 
   return {
